@@ -1,4 +1,4 @@
-import React from 'react'
+import React from "react";
 import { Button } from "@chakra-ui/react";
 import { FormControl, FormLabel } from "@chakra-ui/react";
 import { Input, InputGroup, InputRightElement } from "@chakra-ui/react";
@@ -6,21 +6,25 @@ import { VStack } from "@chakra-ui/react";
 import { useToast } from "@chakra-ui/toast";
 import axios from "axios";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom"; // Updated import
+import { useNavigate } from "react-router-dom";
+import { ChatState } from "../../ContextApi/ChatProvider";
+import { useEffect } from "react";
 
 const Signup = () => {
   const [name, setName] = useState();
   const [email, setEmail] = useState();
   const [confirmpassword, setConfirmpassword] = useState();
   const [password, setPassword] = useState();
-  const [image, setImage] = useState();
+  const [pic, setPic] = useState();
   const [loading, setLoading] = useState(false);
 
   const [show, setShow] = useState(false);
   const handleClick = () => setShow(!show);
   const toast = useToast();
 
-  const navigate = useNavigate(); // Updated: useNavigate hook
+  const navigate = useNavigate();
+
+  const { setUser } = ChatState();
 
   const submitHandler = async () => {
     setLoading(true);
@@ -45,7 +49,7 @@ const Signup = () => {
       });
       return;
     }
-    // console.log(name, email, password, pic);
+
     try {
       const config = {
         headers: {
@@ -58,11 +62,11 @@ const Signup = () => {
           name,
           email,
           password,
-          image,
+          pic,
         },
         config
       );
-      
+
       toast({
         title: "Registration Successful",
         status: "success",
@@ -71,8 +75,10 @@ const Signup = () => {
         position: "bottom",
       });
       localStorage.setItem("userInfo", JSON.stringify(data));
+
+      setUser(data);
       setLoading(false);
-      navigate("/chats"); // Updated: useNavigate replaces history.push
+      navigate("/chats");
     } catch (error) {
       toast({
         title: "Error Occured!",
@@ -86,9 +92,18 @@ const Signup = () => {
     }
   };
 
-  const postDetails = (images) => {
+  useEffect(() => {
+    const userInfoFromStorage = localStorage.getItem("userInfo");
+    if (userInfoFromStorage) {
+      const parsedUserInfo = JSON.parse(userInfoFromStorage);
+      setUser(parsedUserInfo);
+      navigate("/chats");
+    }
+  }, [setUser, navigate]);
+
+  const postDetails = (pics) => {
     setLoading(true);
-    if (images === undefined) {
+    if (pics === undefined) {
       toast({
         title: "Please Select an Image!",
         status: "warning",
@@ -99,9 +114,9 @@ const Signup = () => {
       return;
     }
 
-    if (images.type === "image/jpeg" || images.type === "image/png") {
+    if (pics.type === "image/jpeg" || pics.type === "image/png") {
       const data = new FormData();
-      data.append("file", images);
+      data.append("file", pics);
       data.append("upload_preset", "Mern-Chat-App");
       data.append("cloud_name", "duiej7zzv");
       fetch("https://api.cloudinary.com/v1_1/duiej7zzv/image/upload", {
@@ -110,7 +125,7 @@ const Signup = () => {
       })
         .then((res) => res.json())
         .then((data) => {
-          setImage(data.url.toString());
+          setPic(data.url.toString());
           console.log(data.url.toString());
           setLoading(false);
         })
@@ -162,7 +177,7 @@ const Signup = () => {
               size="sm"
               onClick={handleClick}
               bg={show ? "red.400" : "teal.400"}
-              color="white" // Text color
+              color="white"
               _hover={{ bg: show ? "red.500" : "teal.500" }}
             >
               {show ? "Hide" : "Show"}
@@ -184,7 +199,7 @@ const Signup = () => {
               size="sm"
               onClick={handleClick}
               bg={show ? "red.400" : "teal.400"}
-              color="white" // Text color
+              color="white"
               _hover={{ bg: show ? "red.500" : "teal.500" }}
             >
               {show ? "Hide" : "Show"}
@@ -192,7 +207,7 @@ const Signup = () => {
           </InputRightElement>
         </InputGroup>
       </FormControl>
-      <FormControl id="image">
+      <FormControl id="pic">
         <FormLabel>Upload your image</FormLabel>
         <Input
           type="file"
@@ -214,4 +229,4 @@ const Signup = () => {
   );
 };
 
-export default Signup
+export default Signup;

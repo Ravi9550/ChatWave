@@ -1,33 +1,35 @@
-import React from "react";
-import { Button } from "@chakra-ui/react";
-import { FormControl, FormLabel } from "@chakra-ui/react";
-import { Input, InputGroup, InputRightElement } from "@chakra-ui/react";
-import { VStack } from "@chakra-ui/react";
+import React, { useState, useEffect } from "react";
+import {
+  Button,
+  FormControl,
+  FormLabel,
+  Input,
+  InputGroup,
+  InputRightElement,
+  VStack,
+} from "@chakra-ui/react";
 import { useToast } from "@chakra-ui/react";
-
-
-
 import axios from "axios";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom"; 
+import { useNavigate } from "react-router-dom";
+import { ChatState } from "../../ContextApi/ChatProvider";
 
 const Login = () => {
- 
-  const [email, setEmail] = useState();
-  const [password, setPassword] = useState();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
-  const handleClick = () => setShow(!show);
-
   const [loading, setLoading] = useState(false);
   const toast = useToast();
-  const navigate = useNavigate(); // Updated: useNavigate hook
-  
+  const navigate = useNavigate();
 
-  const submitHandler = async() => {
+  const { setUser } = ChatState();
+
+  const handleClick = () => setShow(!show);
+
+  const submitHandler = async () => {
     setLoading(true);
     if (!email || !password) {
       toast({
-        title: "Please Fill all the Feilds",
+        title: "Please Fill all the Fields",
         status: "warning",
         duration: 5000,
         isClosable: true,
@@ -46,10 +48,7 @@ const Login = () => {
 
       const { data } = await axios.post(
         "/api/user/login",
-        { 
-          email, 
-          password 
-        },
+        { email, password },
         config
       );
 
@@ -60,14 +59,17 @@ const Login = () => {
         isClosable: true,
         position: "bottom",
       });
-      // setUser(data);
+
       localStorage.setItem("userInfo", JSON.stringify(data));
+      setUser(data);
+
       setLoading(false);
       navigate("/chats");
     } catch (error) {
       toast({
-        title: "Error Occured!",
-        description: error.response.data.message,
+        title: "Error Occurred!",
+        description:
+          error.response?.data.message || "An error occurred during login.",
         status: "error",
         duration: 5000,
         isClosable: true,
@@ -76,7 +78,15 @@ const Login = () => {
       setLoading(false);
     }
   };
-  
+
+  useEffect(() => {
+    const userInfoFromStorage = localStorage.getItem("userInfo");
+    if (userInfoFromStorage) {
+      const parsedUserInfo = JSON.parse(userInfoFromStorage);
+      setUser(parsedUserInfo);
+      navigate("/chats");
+    }
+  }, [setUser, navigate]);
 
   return (
     <VStack spacing="10px">
@@ -104,7 +114,7 @@ const Login = () => {
               size="sm"
               onClick={handleClick}
               bg={show ? "red.400" : "teal.400"}
-              color="white" // Text color
+              color="white"
               _hover={{ bg: show ? "red.500" : "teal.500" }}
             >
               {show ? "Hide" : "Show"}

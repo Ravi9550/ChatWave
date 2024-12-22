@@ -19,7 +19,7 @@ import animationData from "../Animations/typing.json";
 import io from "socket.io-client";
 import axios from "axios";
 
-const ENDPOINT = "https://chatwave-26t5.onrender.com"; 
+const ENDPOINT = "https://chatwave-26t5.onrender.com";
 let socket, selectedChatCompare;
 
 const SingleChatSocketLogic = ({ fetchAgain, setFetchAgain }) => {
@@ -45,7 +45,7 @@ const SingleChatSocketLogic = ({ fetchAgain, setFetchAgain }) => {
     socket.emit("setup", user);
     socket.on("connected", () => console.log("Socket connected"));
 
-    
+    // Handle typing indicator
     socket.on("typing", () => {
       setIsTyping(true);
     });
@@ -54,7 +54,6 @@ const SingleChatSocketLogic = ({ fetchAgain, setFetchAgain }) => {
     });
   }, [user]);
 
-  
   const fetchMessages = useCallback(async () => {
     if (!selectedChat) return;
 
@@ -91,15 +90,16 @@ const SingleChatSocketLogic = ({ fetchAgain, setFetchAgain }) => {
     if (!selectedChat) return;
 
     socket.emit("joinChat", selectedChat._id);
+    console.log("User joined chat:", selectedChat._id);
 
     selectedChatCompare = selectedChat;
-    fetchMessages(); 
-  }, [selectedChat, fetchMessages]); 
+    fetchMessages();
+  }, [selectedChat, fetchMessages]);
 
   useEffect(() => {
     socket.on("messageReceived", (newMessage) => {
       if (
-        !selectedChatCompare || 
+        !selectedChatCompare ||
         selectedChatCompare._id !== newMessage.chat._id
       ) {
         return;
@@ -137,8 +137,8 @@ const SingleChatSocketLogic = ({ fetchAgain, setFetchAgain }) => {
         );
         setMessages([...messages, data]);
         socket.emit("newMessage", { ...data, chatId: selectedChat._id });
-        socket.emit("stopTyping", selectedChat._id); 
-        setTyping(false); 
+        socket.emit("stopTyping", selectedChat._id);
+        setTyping(false);
       } catch (error) {
         toast({
           title: "Error Occurred!",
@@ -157,7 +157,7 @@ const SingleChatSocketLogic = ({ fetchAgain, setFetchAgain }) => {
 
     if (!typing) {
       setTyping(true);
-      socket.emit("typing", selectedChat._id); 
+      socket.emit("typing", selectedChat._id);
     }
 
     let lastTypingTime = new Date().getTime();
@@ -167,7 +167,7 @@ const SingleChatSocketLogic = ({ fetchAgain, setFetchAgain }) => {
       var timeNow = new Date().getTime();
       var timeDiff = timeNow - lastTypingTime;
       if (timeDiff >= timerLength && typing) {
-        socket.emit("stopTyping", selectedChat._id); 
+        socket.emit("stopTyping", selectedChat._id);
         setTyping(false);
       }
     }, timerLength);
@@ -265,7 +265,7 @@ const SingleChatSocketLogic = ({ fetchAgain, setFetchAgain }) => {
           justifyContent="center"
           h="100%"
         >
-          <Text fontSize="3xl" pb={3} fontFamily="Work sans">
+          <Text align="center" fontSize="xl" color="gray.500" w="100%" p={4}>
             Click on a chat to start messaging
           </Text>
         </Box>

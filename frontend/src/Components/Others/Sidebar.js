@@ -34,16 +34,21 @@ const Sidebar = () => {
   const [loading, setLoading] = useState(false);
   const [loadingChat, setLoadingChat] = useState(false);
 
-  const { setSelectedChat, user, chats, setChats } = ChatState();
+  const { setSelectedChat, user, chats, setChats, setUser } = ChatState();
   const navigate = useNavigate();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
 
+  // Handle user logout
   const logoutHandler = () => {
     localStorage.removeItem("userInfo");
+    setSelectedChat(null);
+    setChats([]);
+    setUser(null);
     navigate("/");
   };
 
+  // Fetch search results based on user input
   const handleSearch = useCallback(async () => {
     if (!search) {
       return;
@@ -73,6 +78,7 @@ const Sidebar = () => {
     }
   }, [search, user.token, toast]);
 
+  // Access chat when a user is selected
   const accessChat = async (userId) => {
     try {
       setLoadingChat(true);
@@ -100,7 +106,7 @@ const Sidebar = () => {
     }
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Trigger search after delay
   useEffect(() => {
     const timeout = setTimeout(() => {
       handleSearch();
@@ -108,6 +114,27 @@ const Sidebar = () => {
 
     return () => clearTimeout(timeout);
   }, [search, handleSearch]);
+
+  useEffect(() => {
+    if (user) {
+      // Fetch chats for the logged-in user
+      const fetchChats = async () => {
+        const config = {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        };
+        try {
+          const { data } = await axios.get(`/api/chat`, config);
+          setChats(data); // Set the chats state with fetched data
+        } catch (error) {
+          console.error("Error fetching chats:", error);
+        }
+      };
+
+      fetchChats();
+    }
+  }, [user, setChats]);
 
   return (
     <>
