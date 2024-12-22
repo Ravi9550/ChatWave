@@ -19,7 +19,7 @@ import animationData from "../Animations/typing.json";
 import io from "socket.io-client";
 import axios from "axios";
 
-const ENDPOINT = "http://localhost:5000"; 
+const ENDPOINT = "https://chatwave-26t5.onrender.com"; 
 let socket, selectedChatCompare;
 
 const SingleChatSocketLogic = ({ fetchAgain, setFetchAgain }) => {
