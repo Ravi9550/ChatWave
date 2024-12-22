@@ -1,37 +1,35 @@
-import React from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { ChatState } from "../../ContextApi/ChatProvider";
-import { Box } from "@chakra-ui/react";
-import { Text } from "@chakra-ui/react";
-import { IconButton } from "@chakra-ui/react";
+import {
+  Box,
+  Text,
+  IconButton,
+  Spinner,
+  FormControl,
+  Input,
+  useToast,
+} from "@chakra-ui/react";
 import { ArrowBackIcon } from "@chakra-ui/icons";
-import { getSender } from "../../Config/ChatLogic";
-import { getSenderFull } from "../../Config/ChatLogic";
+import { getSender, getSenderFull } from "../../Config/ChatLogic";
 import Profile from "./Profile";
 import UpdateGroup from "./UpdateGroup";
-import { Spinner } from "@chakra-ui/react";
-import { FormControl } from "@chakra-ui/react";
-import { Input } from "@chakra-ui/react";
-import { useState } from "react";
-import { useToast } from "@chakra-ui/react";
-import axios from "axios";
-import { useEffect } from "react";
 import Scrollable from "./Scrollable";
 import Lottie from "react-lottie";
 import animationData from "../Animations/typing.json";
-
 import io from "socket.io-client";
+import axios from "axios";
 
-const ENDPOINT = "http://localhost:5000";
-var socket, selectedChatCompare;
+const ENDPOINT = "http://localhost:5000"; 
+let socket, selectedChatCompare;
 
 const SingleChatSocketLogic = ({ fetchAgain, setFetchAgain }) => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [newMessage, setNewMessage] = useState("");
-  const [socketConnected, setSocketConnected] = useState(false);
   const [typing, setTyping] = useState(false);
   const [istyping, setIsTyping] = useState(false);
   const toast = useToast();
+  const { selectedChat, setSelectedChat, user } = ChatState();
 
   const defaultOptions = {
     loop: true,
@@ -42,9 +40,22 @@ const SingleChatSocketLogic = ({ fetchAgain, setFetchAgain }) => {
     },
   };
 
-  const { selectedChat, setSelectedChat, user } = ChatState();
+  useEffect(() => {
+    socket = io(ENDPOINT);
+    socket.emit("setup", user);
+    socket.on("connected", () => console.log("Socket connected"));
 
-  const fetchMessages = async () => {
+    
+    socket.on("typing", () => {
+      setIsTyping(true);
+    });
+    socket.on("stopTyping", () => {
+      setIsTyping(false);
+    });
+  }, [user]);
+
+  
+  const fetchMessages = useCallback(async () => {
     if (!selectedChat) return;
 
     try {
@@ -63,10 +74,10 @@ const SingleChatSocketLogic = ({ fetchAgain, setFetchAgain }) => {
       setMessages(data);
       setLoading(false);
 
-      socket.emit("join chat", selectedChat._id);
+      socket.emit("joinChat", selectedChat._id);
     } catch (error) {
       toast({
-        title: "Error Occured!",
+        title: "Error Occurred!",
         description: "Failed to Load the Messages",
         status: "error",
         duration: 5000,
@@ -74,11 +85,40 @@ const SingleChatSocketLogic = ({ fetchAgain, setFetchAgain }) => {
         position: "bottom",
       });
     }
-  };
+  }, [selectedChat, user.token, toast]);
+
+  useEffect(() => {
+    if (!selectedChat) return;
+
+    socket.emit("joinChat", selectedChat._id);
+
+    selectedChatCompare = selectedChat;
+    fetchMessages(); 
+  }, [selectedChat, fetchMessages]); 
+
+  useEffect(() => {
+    socket.on("messageReceived", (newMessage) => {
+      if (
+        !selectedChatCompare || 
+        selectedChatCompare._id !== newMessage.chat._id
+      ) {
+        return;
+      } else {
+        setMessages((prevMessages) => {
+          const isDuplicate = prevMessages.some(
+            (msg) => msg._id === newMessage._id
+          );
+          if (!isDuplicate) {
+            return [...prevMessages, newMessage];
+          }
+          return prevMessages;
+        });
+      }
+    });
+  }, []);
 
   const sendMessage = async (event) => {
     if (event.key === "Enter" && newMessage) {
-      socket.emit("stop typing", selectedChat._id);
       try {
         const config = {
           headers: {
@@ -91,15 +131,17 @@ const SingleChatSocketLogic = ({ fetchAgain, setFetchAgain }) => {
           "/api/message",
           {
             content: newMessage,
-            chatId: selectedChat,
+            chatId: selectedChat._id,
           },
           config
         );
-        socket.emit("new message", data);
         setMessages([...messages, data]);
+        socket.emit("newMessage", { ...data, chatId: selectedChat._id });
+        socket.emit("stopTyping", selectedChat._id); 
+        setTyping(false); 
       } catch (error) {
         toast({
-          title: "Error Occured!",
+          title: "Error Occurred!",
           description: "Failed to send the Message",
           status: "error",
           duration: 5000,
@@ -110,52 +152,22 @@ const SingleChatSocketLogic = ({ fetchAgain, setFetchAgain }) => {
     }
   };
 
-  useEffect(() => {
-    socket = io(ENDPOINT);
-    socket.emit("setup", user);
-    socket.on("connected", () => setSocketConnected(true));
-    socket.on("typing", () => setIsTyping(true));
-    socket.on("stop typing", () => setIsTyping(false));
-
-    // eslint-disable-next-line
-  }, []);
-
-  useEffect(() => {
-    fetchMessages();
-
-    selectedChatCompare = selectedChat;
-    // eslint-disable-next-line
-  }, [selectedChat]);
-
-  useEffect(() => {
-    socket.on("message recieved", (newMessageRecieved) => {
-      if (
-        !selectedChatCompare || // if chat is not selected or doesn't match current chat
-        selectedChatCompare._id !== newMessageRecieved.chat._id
-      ) {
-        
-      } else {
-        setMessages([...messages, newMessageRecieved]);
-      }
-    });
-  });
-
   const typingHandler = (e) => {
     setNewMessage(e.target.value);
 
-    if (!socketConnected) return;
-
     if (!typing) {
       setTyping(true);
-      socket.emit("typing", selectedChat._id);
+      socket.emit("typing", selectedChat._id); 
     }
+
     let lastTypingTime = new Date().getTime();
     var timerLength = 3000;
+
     setTimeout(() => {
       var timeNow = new Date().getTime();
       var timeDiff = timeNow - lastTypingTime;
       if (timeDiff >= timerLength && typing) {
-        socket.emit("stop typing", selectedChat._id);
+        socket.emit("stopTyping", selectedChat._id); 
         setTyping(false);
       }
     }, timerLength);
@@ -184,9 +196,7 @@ const SingleChatSocketLogic = ({ fetchAgain, setFetchAgain }) => {
               (!selectedChat.isGroupChat ? (
                 <>
                   {getSender(user, selectedChat.users)}
-                  <Profile
-                    user={getSenderFull(user, selectedChat.users)}
-                  />
+                  <Profile user={getSenderFull(user, selectedChat.users)} />
                 </>
               ) : (
                 <>
@@ -223,7 +233,6 @@ const SingleChatSocketLogic = ({ fetchAgain, setFetchAgain }) => {
                 <Scrollable messages={messages} />
               </div>
             )}
-
             <FormControl
               onKeyDown={sendMessage}
               id="first-name"
@@ -234,14 +243,11 @@ const SingleChatSocketLogic = ({ fetchAgain, setFetchAgain }) => {
                 <div>
                   <Lottie
                     options={defaultOptions}
-                    // height={50}
                     width={70}
                     style={{ marginBottom: 15, marginLeft: 0 }}
                   />
                 </div>
-              ) : (
-                <></>
-              )}
+              ) : null}
               <Input
                 variant="filled"
                 bg="#E0E0E0"
@@ -253,9 +259,15 @@ const SingleChatSocketLogic = ({ fetchAgain, setFetchAgain }) => {
           </Box>
         </>
       ) : (
-        // to get socket.io on same page
-        <Box display="flex" alignItems="center" justifyContent="center" h="100%">
-         
+        <Box
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          h="100%"
+        >
+          <Text fontSize="3xl" pb={3} fontFamily="Work sans">
+            Click on a chat to start messaging
+          </Text>
         </Box>
       )}
     </>

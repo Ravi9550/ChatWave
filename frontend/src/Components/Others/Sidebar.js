@@ -1,5 +1,4 @@
-import React from 'react'
-import { useState } from 'react';
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Box,
   Tooltip,
@@ -20,20 +19,14 @@ import {
   useToast,
   Spinner,
 } from "@chakra-ui/react";
-
-
-
-
 import { ChevronDownIcon } from "@chakra-ui/icons";
 import { Avatar } from "@chakra-ui/avatar";
-import { ChatState } from '../../ContextApi/ChatProvider';
-import Profile from './Profile';
+import { ChatState } from "../../ContextApi/ChatProvider";
+import Profile from "./Profile";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import ChatLoading from './ChatLoading';
-import UserList from './UserList';
-import { useEffect } from 'react';
-
+import ChatLoading from "./ChatLoading";
+import UserList from "./UserList";
 
 const Sidebar = () => {
   const [search, setSearch] = useState("");
@@ -41,14 +34,7 @@ const Sidebar = () => {
   const [loading, setLoading] = useState(false);
   const [loadingChat, setLoadingChat] = useState(false);
 
-  const {
-    setSelectedChat,
-    user,
-
-    chats,
-    setChats,
-  } = ChatState();
-
+  const { setSelectedChat, user, chats, setChats } = ChatState();
   const navigate = useNavigate();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
@@ -58,15 +44,13 @@ const Sidebar = () => {
     navigate("/");
   };
 
-  const handleSearch = async () => {
+  const handleSearch = useCallback(async () => {
     if (!search) {
-      
       return;
     }
 
     try {
       setLoading(true);
-
       const config = {
         headers: {
           Authorization: `Bearer ${user.token}`,
@@ -79,15 +63,15 @@ const Sidebar = () => {
       setSearchResult(data);
     } catch (error) {
       toast({
-        title: "Error Occured!",
-        description: "Failed to Load the Search ",
+        title: "Error Occurred!",
+        description: "Failed to Load the Search",
         status: "error",
         duration: 5000,
         isClosable: true,
         position: "bottom-left",
       });
     }
-  };
+  }, [search, user.token, toast]);
 
   const accessChat = async (userId) => {
     try {
@@ -116,14 +100,14 @@ const Sidebar = () => {
     }
   };
 
-  // Debounce the search query
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const timeout = setTimeout(() => {
       handleSearch();
-    }, 1000); 
+    }, 1000);
 
-    return () => clearTimeout(timeout); 
-  }, [search]);
+    return () => clearTimeout(timeout);
+  }, [search, handleSearch]);
 
   return (
     <>
@@ -135,7 +119,7 @@ const Sidebar = () => {
         w="100%"
         p="5px 10px 5px 10px"
         borderWidth="5px"
-        borderColor="#25D366;"
+        borderColor="#25D366"
       >
         <Tooltip label="Search Users" hasArrow placement="bottom-end">
           <Button variant="ghost" onClick={onOpen}>
@@ -153,7 +137,7 @@ const Sidebar = () => {
           <Menu>
             <MenuButton
               as={Button}
-              bg="#25D366;"
+              bg="#25D366"
               rightIcon={<ChevronDownIcon />}
             >
               <Avatar
@@ -165,7 +149,7 @@ const Sidebar = () => {
             </MenuButton>
             <MenuList>
               <Profile user={user}>
-                <MenuItem>My Profile</MenuItem>{" "}
+                <MenuItem>My Profile</MenuItem>
               </Profile>
               <MenuDivider />
               <MenuItem onClick={logoutHandler}>Logout</MenuItem>
@@ -181,12 +165,11 @@ const Sidebar = () => {
           <DrawerBody>
             <Box display="flex" pb={2}>
               <Input
-                placeholder="Search "
+                placeholder="Search"
                 mr={2}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
-              {/* <Button onClick={handleSearch}>Go</Button> */}
             </Box>
             {loading ? (
               <ChatLoading />
@@ -205,6 +188,6 @@ const Sidebar = () => {
       </Drawer>
     </>
   );
-}
+};
 
-export default Sidebar
+export default Sidebar;
